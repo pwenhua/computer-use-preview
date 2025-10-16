@@ -14,6 +14,7 @@
 import os
 from typing import Literal, Optional, Union, Any
 from google import genai
+from google.api_core import exceptions
 from google.genai import types
 import termcolor
 from google.genai.types import (
@@ -74,7 +75,7 @@ class BrowserAgent:
         self._verbose = verbose
         self.final_reasoning = None
         self._client = genai.Client(
-            api_key=os.environ.get("GEMINI_API_KEY"),
+            api_key="AIzaSyBQ_WTy17bEpA9dPcQU3RYzHrybMahm8m0",
             vertexai=os.environ.get("USE_VERTEXAI", "0").lower() in ["true", "1"],
             project=os.environ.get("VERTEXAI_PROJECT"),
             location=os.environ.get("VERTEXAI_LOCATION"),
@@ -194,7 +195,7 @@ class BrowserAgent:
             raise ValueError(f"Unsupported function: {action}")
 
     def get_model_response(
-        self, max_retries=5, base_delay_s=1
+        self, max_retries=5, base_delay_s=5
     ) -> types.GenerateContentResponse:
         for attempt in range(max_retries):
             try:
@@ -204,6 +205,15 @@ class BrowserAgent:
                     config=self._generate_content_config,
                 )
                 return response  # Return response on success
+            except exceptions.ResourceExhausted as e:
+                print(e)
+                if "rate limit" in str(e).lower():
+                    termcolor.cprint(
+                        "Rate limit exceeded. You may be using the free tier of the Gemini API.",
+                        color="yellow",
+                    )
+                # Fall through to the generic exception handling for retry logic
+                pass
             except Exception as e:
                 print(e)
                 if attempt < max_retries - 1:
